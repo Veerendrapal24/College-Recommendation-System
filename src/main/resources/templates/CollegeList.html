@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>College List</title></head>
+<body>
+<h2>Available Colleges</h2>
+<table border="1">
+  <tr>
+    <th>Name</th><th>Location</th><th>Sector</th><th>Hostel</th><th>Budget</th>
+  </tr>
+  <tr th:each="college : ${colleges}">
+    <td th:text="${college.name}"></td>
+    <td th:text="${college.location}"></td>
+    <td th:text="${college.sector}"></td>
+    <td th:text="${college.hostelAvailable}"></td>
+    <td th:text="${college.budgetRange}"></td>
+  </tr>
+</table>
+</body>
+</html>

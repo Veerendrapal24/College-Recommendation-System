@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Government Colleges - College Recommender</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .header-bg {
+      background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    }
+    .filter-card {
+      background-color: #f8f9fa;
+      border-radius: 15px;
+    }
+    .table th {
+      background: linear-gradient(45deg, #4ecdc4, #44a08d);
+      color: white;
+    }
+    .table-hover tbody tr:hover {
+      background-color: rgba(78, 205, 196, 0.1);
+    }
+    .availability-true {
+      color: #28a745;
+    }
+    .availability-false {
+      color: #dc3545;
+    }
+    .branch-tag {
+      display: inline-block;
+      background-color: #e9ecef;
+      color: #495057;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      margin: 2px;
+    }
+    .sort-header {
+      cursor: pointer;
+    }
+    .sort-header:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid px-0">
+  <div class="header-bg text-white py-5 text-center position-relative">
+    <div class="position-absolute top-0 start-0 m-3">
+      <a href="/" class="btn btn-light rounded-pill px-4">
+        ← Back to Home
+      </a>
+    </div>
+    <h1 class="display-5 fw-bold">🏛️ Government Colleges</h1>
+    <p class="lead">Discover affordable government colleges with excellent facilities</p>
+  </div>
+
+  <div class="container py-5">
+    <div class="filter-card p-4 mb-5 shadow-sm">
+      <h2 class="h4 mb-4">Filter Government Colleges</h2>
+      <form th:action="@{/governmentColleges}" method="get">
+        <div class="row g-3">
+          <div class="col-lg-2 col-md-4">
+            <label for="location" class="form-label">Location</label>
+            <input type="text" class="form-control" id="location" name="location"
+                   th:value="${param.location}" placeholder="City or state">
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label for="sscPercentage" class="form-label">Min SSC %</label>
+            <input type="number" class="form-control" id="sscPercentage" name="sscPercentage"
+                   th:value="${param.sscPercentage}" placeholder="8.5" min="0" max="10" step="0.1">
+          </div>
+          <div class="col-lg-2 col-md-4">
+            <label for="branch" class="form-label">Branch/Stream</label>
+            <select class="form-select" id="branch" name="branch">
+              <option value="">All Branches</option>
+              <option th:each="stream : ${availableStreams}"
+                      th:value="${stream.name()}"
+                      th:text="${stream.name()}"
+                      th:selected="${param.branch == stream.name()}">
+              </option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="hostelAvailable"
+                     name="hostelAvailable" value="true" th:checked="${param.hostelAvailable}">
+              <label class="form-check-label" for="hostelAvailable">Hostel Available</label>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-dark px-4 py-2 w-100">
+              🔍 Find Colleges
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <div th:if="${colleges != null}">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h4 mb-0">Search Results</h2>
+        <span class="badge bg-success fs-6" th:text="${colleges.size()} + ' colleges found'"></span>
+      </div>
+
+      <div th:if="${colleges.empty}" class="alert alert-info">
+        <h5>No government colleges found matching your criteria.</h5>
+        <p class="mb-0">Try adjusting your filters or search for a different location/branch combination.</p>
+      </div>
+
+      <div th:unless="${colleges.empty}">
+        <div class="table-responsive">
+          <table class="table table-hover table-bordered">
+            <thead>
+            <tr>
+              <th>College Name</th>
+              <th>Location</th>
+              <th>Hostel</th>
+              <th>Available Branches</th>
+              <th>SSC Cutoff</th>
+              <th class="sort-header" onclick="sortTable(5)">JEE Mains %</th>
+              <th class="sort-header" onclick="sortTable(6)">NEET %</th>
+              <th class="sort-header" onclick="sortTable(7)">Pass %</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="college : ${colleges}">
+              <td th:text="${college.name}"></td>
+              <td th:text="${college.location}"></td>
+              <td>
+                <span th:class="${college.hostelAvailable} ? 'availability-true' : 'availability-false'"
+                      th:text="${college.hostelAvailable} ? '✓ Available' : '✗ Not Available'">
+                </span>
+              </td>
+              <td>
+                <span th:if="${college.branches != null and !college.branches.empty}">
+                  <span th:each="branch : ${college.branches}"
+                        class="branch-tag"
+                        th:text="${branch.streamName}">
+                  </span>
+                </span>
+                <span th:unless="${college.branches != null and !college.branches.empty}" class="text-muted">N/A</span>
+              </td>
+              <td th:text="${college.performanceMetric?.sscCutoff != null ?
+                           #numbers.formatDecimal(college.performanceMetric.sscCutoff, 1, 2) + '%' : 'N/A'}"></td>
+              <td th:text="${college.performanceMetric?.mainsQualPercent != null ?
+                          #numbers.formatDecimal(college.performanceMetric.mainsQualPercent, 1, 2) + '%' : 'N/A'}"></td>
+              <td th:text="${college.performanceMetric?.neetQualPercent != null ?
+                          #numbers.formatDecimal(college.performanceMetric.neetQualPercent, 1, 2) + '%' : 'N/A'}"></td>
+              <td th:text="${college.performanceMetric?.passPercentage != null ?
+                          #numbers.formatDecimal(college.performanceMetric.passPercentage, 1, 2) + '%' : 'N/A'}"></td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Simple client-side sorting function
+  function sortTable(columnIndex) {
+    const table = document.querySelector('.table');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+      const aValue = a.cells[columnIndex].textContent.replace('%', '') || '0';
+      const bValue = b.cells[columnIndex].textContent.replace('%', '') || '0';
+      return parseFloat(bValue) - parseFloat(aValue); // Descending order
+    });
+
+    // Remove all existing rows
+    rows.forEach(row => tbody.removeChild(row));
+
+    // Add sorted rows
+    rows.forEach(row => tbody.appendChild(row));
+  }
+</script>
+</body>
+</html>
