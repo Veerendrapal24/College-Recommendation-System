@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Performance Metrics - College Recommender</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link th:href="@{/css/custom.css}" rel="stylesheet">
+  <style>
+    .sort-icon {
+      margin-left: 5px;
+      font-size: 0.8rem;
+      opacity: 0.5;
+    }
+    .sort-header {
+      cursor: pointer;
+    }
+    .sort-header:hover .sort-icon {
+      opacity: 1;
+    }
+    .progress-table {
+      height: 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="admin-layout">
+  <!-- Collapsible Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-header">
+      <a class="sidebar-logo" href="#">
+        <i class="fas fa-graduation-cap"></i>
+        <h3>Recommender</h3>
+      </a>
+      <button class="btn btn-sm btn-link text-secondary sidebar-toggle-btn d-none d-md-inline-block">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+    
+    <div class="sidebar-menu">
+      <a th:href="@{/admin/dashboard}" class="sidebar-nav-link">
+        <i class="fas fa-chart-pie"></i>
+        <span class="sidebar-text">Dashboard</span>
+      </a>
+      <a th:href="@{/admin/colleges}" class="sidebar-nav-link">
+        <i class="fas fa-university"></i>
+        <span class="sidebar-text">Manage Colleges</span>
+      </a>
+      <a th:href="@{/admin/branches}" class="sidebar-nav-link">
+        <i class="fas fa-code-branch"></i>
+        <span class="sidebar-text">Manage Branches</span>
+      </a>
+      <a th:href="@{/admin/performance}" class="sidebar-nav-link active">
+        <i class="fas fa-chart-line"></i>
+        <span class="sidebar-text">Performance Metrics</span>
+      </a>
+      <a th:href="@{/admin/users}" class="sidebar-nav-link">
+        <i class="fas fa-users"></i>
+        <span class="sidebar-text">View Users</span>
+      </a>
+    </div>
+    
+    <div class="sidebar-footer">
+      <form th:action="@{/logout}" method="post">
+        <button type="submit" class="sidebar-nav-link border-0 bg-transparent w-100 text-start">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="sidebar-text">Logout</span>
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Main Content Panel -->
+  <main class="admin-main">
+    <!-- Top Navbar Row -->
+    <header class="admin-navbar">
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-sm btn-outline-secondary d-md-none" onclick="document.querySelector('.admin-sidebar').classList.toggle('show-mobile')">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h4 class="mb-0 text-primary">Performance Metrics</h4>
+      </div>
+      
+      <div class="d-flex align-items-center gap-3">
+        <!-- Theme Toggle -->
+        <div class="theme-toggle-btn me-2" onclick="toggleTheme()" title="Toggle Theme">
+          <i class="fas fa-moon"></i>
+        </div>
+        
+        <!-- Profile Avatar Widget -->
+        <div class="d-flex align-items-center gap-2">
+          <div class="avatar-circle">
+            <span th:text="${#strings.substring(adminName ?: 'A', 0, 1)}">A</span>
+          </div>
+          <div class="d-none d-lg-block">
+            <div class="small fw-bold" th:text="${adminName} ?: 'Administrator'">Admin</div>
+            <div class="text-tertiary" style="font-size: 0.75rem;" th:text="${adminEmail} ?: 'admin@college.edu'">admin@college.edu</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Success/Error Alerts -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+      <strong>Success!</strong> <span th:text="${successMessage}"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show" role="alert">
+      <strong>Error!</strong> <span th:text="${errorMessage}"></span>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Analytics Averages Cards -->
+    <div class="row g-4 mb-4">
+      <div class="col-md-4">
+        <div class="saas-stat-card">
+          <div>
+            <div class="text-secondary small fw-semibold">Average Pass Rate</div>
+            <h3 class="fw-bold mb-0 mt-1" id="avgPassCard">0.0%</h3>
+            <div class="progress mt-2" style="height: 4px; width: 140px;">
+              <div class="progress-bar bg-success" id="avgPassBar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="saas-stat-icon text-success" style="background: rgba(16, 185, 129, 0.15); font-size: 1.2rem;">
+            <i class="fas fa-graduation-cap"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="saas-stat-card">
+          <div>
+            <div class="text-secondary small fw-semibold">Average NEET Qual %</div>
+            <h3 class="fw-bold mb-0 mt-1" id="avgNeetCard">0.0%</h3>
+            <div class="progress mt-2" style="height: 4px; width: 140px;">
+              <div class="progress-bar bg-warning" id="avgNeetBar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="saas-stat-icon text-warning" style="background: rgba(245, 158, 11, 0.15); font-size: 1.2rem;">
+            <i class="fas fa-stethoscope"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="saas-stat-card">
+          <div>
+            <div class="text-secondary small fw-semibold">Average JEE Qual %</div>
+            <h3 class="fw-bold mb-0 mt-1" id="avgJeeCard">0.0%</h3>
+            <div class="progress mt-2" style="height: 4px; width: 140px;">
+              <div class="progress-bar bg-primary" id="avgJeeBar" style="width: 0%"></div>
+            </div>
+          </div>
+          <div class="saas-stat-icon text-primary" style="background: rgba(79, 70, 229, 0.15); font-size: 1.2rem;">
+            <i class="fas fa-calculator"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions Bar -->
+    <div class="saas-card mb-4">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text bg-transparent border-end-0"><i class="fas fa-search text-tertiary"></i></span>
+            <input type="text" id="searchInput" class="form-control border-start-0 ps-0" placeholder="Search by college name, statistics..." onkeyup="onSearchChange()">
+          </div>
+        </div>
+        
+        <div class="col-md-2">
+          <button class="btn btn-secondary-custom w-100" onclick="clearSearchFilters()">
+            <i class="fas fa-undo me-1"></i> Clear
+          </button>
+        </div>
+        
+        <div class="col-md-5 text-end d-flex align-items-center justify-content-end gap-3">
+          <span th:if="${#lists.isEmpty(collegesWithoutMetrics)}" class="text-danger small fw-semibold">
+            All colleges already have metrics.
+          </span>
+          <button class="btn btn-primary-custom py-2 px-4" data-bs-toggle="modal" data-bs-target="#performanceModal"
+                  onclick="resetForm()"
+                  th:disabled="${#lists.isEmpty(collegesWithoutMetrics)}">
+            <i class="fas fa-plus-circle me-1"></i> Add Metric
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="saas-table-container">
+      <table class="saas-table" id="metricsTable">
+        <thead>
+          <tr>
+            <th class="sort-header" onclick="sortTable(0)">ID <i class="fas fa-sort sort-icon"></i></th>
+            <th class="sort-header" onclick="sortTable(1)">College Name <i class="fas fa-sort sort-icon"></i></th>
+            <th class="sort-header" onclick="sortTable(2)">Pass Rate <i class="fas fa-sort sort-icon"></i></th>
+            <th class="sort-header" onclick="sortTable(3)">NEET Qual <i class="fas fa-sort sort-icon"></i></th>
+            <th class="sort-header" onclick="sortTable(4)">JEE Mains <i class="fas fa-sort sort-icon"></i></th>
+            <th class="sort-header" onclick="sortTable(5)">SSC Cutoff <i class="fas fa-sort sort-icon"></i></th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="metric : ${metrics}">
+            <td th:text="${metric.performanceId}">1</td>
+            <td th:text="${metric.college.name}">ABC Junior College</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span style="min-width: 50px;" th:text="${metric.passPercentage} + '%'">92.5%</span>
+                <div class="progress flex-grow-1 progress-table" style="max-width: 100px;">
+                  <div class="progress-bar bg-success" th:style="'width: ' + ${metric.passPercentage} + '%'"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span style="min-width: 50px;" th:text="${metric.neetQualPercent} + '%'">45.0%</span>
+                <div class="progress flex-grow-1 progress-table" style="max-width: 100px;">
+                  <div class="progress-bar bg-warning" th:style="'width: ' + ${metric.neetQualPercent} + '%'"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <span style="min-width: 50px;" th:text="${metric.mainsQualPercent} + '%'">52.0%</span>
+                <div class="progress flex-grow-1 progress-table" style="max-width: 100px;">
+                  <div class="progress-bar bg-primary" th:style="'width: ' + ${metric.mainsQualPercent} + '%'"></div>
+                </div>
+              </div>
+            </td>
+            <td th:text="${metric.sscCutoff != null} ? ${metric.sscCutoff} : 'N/A'">8.50</td>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-sm btn-warning text-white px-3"
+                        th:data-id="${metric.performanceId}"
+                        th:data-college-id="${metric.college.collegeId}"
+                        th:data-pass="${metric.passPercentage}"
+                        th:data-neet="${metric.neetQualPercent}"
+                        th:data-mains="${metric.mainsQualPercent}"
+                        th:data-ssc="${metric.sscCutoff}"
+                        onclick="editMetricFromButton(this)"
+                        data-bs-toggle="modal" data-bs-target="#performanceModal">
+                  <i class="fas fa-edit"></i> Edit
+                </button>
+                <a th:href="@{/admin/performance/delete/{id}(id=${metric.performanceId})}"
+                   class="btn btn-sm btn-danger px-3"
+                   onclick="return confirm('Are you sure you want to delete this performance metric?')">
+                  <i class="fas fa-trash"></i> Delete
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(metrics)}">
+            <td colspan="7" class="text-center text-muted py-4">
+              No performance metrics found. <a href="#" data-bs-toggle="modal" data-bs-target="#performanceModal" onclick="resetForm()">Add the first performance metric</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <!-- Pagination Row -->
+      <div class="d-flex justify-content-between align-items-center p-3 border-top" style="background-color: var(--bg-secondary);">
+        <div class="small text-secondary" id="paginationInfo">Showing 1 to 10 of 12 metrics</div>
+        <nav>
+          <ul class="pagination pagination-sm mb-0 gap-1" id="paginationControls">
+            <!-- Buttons dynamically generated -->
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal Form -->
+<div class="modal fade" id="performanceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content glass-card border-0">
+      <form id="performanceForm" action="/admin/performance/save" method="post">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h5 class="modal-title fw-bold" id="modalTitle">Add Performance Metric</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body py-4">
+          <input type="hidden" id="performanceId" name="performanceId" value="0"/>
+
+          <div class="mb-3">
+            <label for="collegeSelect" class="form-label small fw-bold text-secondary">College <span class="text-danger">*</span></label>
+            <select id="collegeSelect" class="form-select" required onchange="document.getElementById('collegeId').value = this.value;">
+              <option value="">Select College</option>
+            </select>
+            <div id="collegeAlertMsg" class="form-text text-danger mt-1" style="display: none;"></div>
+            <input type="hidden" id="collegeId" name="collegeId" value=""/>
+          </div>
+
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label for="passPercentage" class="form-label small fw-bold text-secondary">Pass Rate (%) <span class="text-danger">*</span></label>
+              <input type="number" id="passPercentage" name="passPercentage" class="form-control" step="0.01" min="0" max="100" required placeholder="e.g. 95.5">
+            </div>
+            <div class="col-6 mb-3">
+              <label for="neetQualPercent" class="form-label small fw-bold text-secondary">NEET Qual % <span class="text-danger">*</span></label>
+              <input type="number" id="neetQualPercent" name="neetQualPercent" class="form-control" step="0.01" min="0" max="100" required placeholder="e.g. 45.0">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-6 mb-3">
+              <label for="mainsQualPercent" class="form-label small fw-bold text-secondary">JEE Mains Qual % <span class="text-danger">*</span></label>
+              <input type="number" id="mainsQualPercent" name="mainsQualPercent" class="form-control" step="0.01" min="0" max="100" required placeholder="e.g. 52.0">
+            </div>
+            <div class="col-6 mb-3">
+              <label for="sscCutoff" class="form-label small fw-bold text-secondary">SSC Cutoff GPA (optional)</label>
+              <input type="number" id="sscCutoff" name="sscCutoff" class="form-control" step="0.01" min="0" max="10" placeholder="e.g. 9.2">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer border-top-0 pt-0">
+          <button type="button" class="btn btn-secondary-custom" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary-custom" id="submitBtn">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/custom.js}"></script>
+<script th:inline="javascript">
+  const allColleges = [];
+  /*[# th:each="college : ${colleges}"]*/
+  allColleges.push({
+    id: /*[[${college.collegeId}]]*/ 0,
+    name: /*[[${college.name}]]*/ '',
+    location: /*[[${college.location}]]*/ ''
+  });
+  /*[/]*/
+
+  const collegesWithoutMetrics = [];
+  /*[# th:each="college : ${collegesWithoutMetrics}"]*/
+  collegesWithoutMetrics.push({
+    id: /*[[${college.collegeId}]]*/ 0,
+    name: /*[[${college.name}]]*/ '',
+    location: /*[[${college.location}]]*/ ''
+  });
+  /*[/]*/
+
+  function resetForm() {
+    document.getElementById('modalTitle').textContent = 'Add Performance Metric';
+    document.getElementById('submitBtn').textContent = 'Save';
+    document.getElementById('submitBtn').disabled = false;
+
+    document.getElementById('performanceId').value = '0';
+    
+    const select = document.getElementById('collegeSelect');
+    select.innerHTML = '<option value="">Select College</option>';
+    
+    const msgDiv = document.getElementById('collegeAlertMsg');
+    msgDiv.style.display = 'none';
+    msgDiv.textContent = '';
+    
+    collegesWithoutMetrics.forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.name} (${c.location})</option>`;
+    });
+    select.disabled = false;
+    
+    document.getElementById('collegeId').value = '';
+    document.getElementById('passPercentage').value = '';
+    document.getElementById('neetQualPercent').value = '';
+    document.getElementById('mainsQualPercent').value = '';
+    document.getElementById('sscCutoff').value = '';
+  }
+
+  function editMetricFromButton(button) {
+    const id = button.getAttribute('data-id');
+    const collegeId = button.getAttribute('data-college-id');
+    const pass = button.getAttribute('data-pass');
+    const neet = button.getAttribute('data-neet');
+    const mains = button.getAttribute('data-mains');
+    const ssc = button.getAttribute('data-ssc');
+
+    document.getElementById('modalTitle').textContent = 'Edit Performance Metric';
+    document.getElementById('submitBtn').textContent = 'Update';
+    document.getElementById('submitBtn').disabled = false;
+
+    const msgDiv = document.getElementById('collegeAlertMsg');
+    msgDiv.style.display = 'none';
+    msgDiv.textContent = '';
+
+    document.getElementById('performanceId').value = id;
+    
+    const select = document.getElementById('collegeSelect');
+    select.innerHTML = '<option value="">Select College</option>';
+    allColleges.forEach(c => {
+      select.innerHTML += `<option value="${c.id}">${c.name} (${c.location})</option>`;
+    });
+    select.value = collegeId;
+    select.disabled = true; 
+    
+    document.getElementById('collegeId').value = collegeId;
+    document.getElementById('passPercentage').value = pass;
+    document.getElementById('neetQualPercent').value = neet;
+    document.getElementById('mainsQualPercent').value = mains;
+    document.getElementById('sscCutoff').value = (ssc === 'null' || !ssc) ? '' : ssc;
+  }
+
+  // --- Dynamic Search, Sort, Pagination, Averages Logic ---
+  let tableRows = [];
+  let currentPage = 1;
+  const pageSize = 8;
+  let sortColumnIndex = -1;
+  let sortDirection = true; // true = ASC, false = DESC
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const tbody = document.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    tableRows = rows.filter(row => row.cells.length > 1);
+    
+    // Calculate global metrics from all table rows
+    calculateAverages();
+    
+    renderTable();
+  });
+
+  function calculateAverages() {
+    let totalPass = 0, totalNeet = 0, totalJee = 0, count = 0;
+    
+    tableRows.forEach(row => {
+      const passText = row.cells[2].textContent.replace('%', '').trim();
+      const neetText = row.cells[3].textContent.replace('%', '').trim();
+      const jeeText = row.cells[4].textContent.replace('%', '').trim();
+      
+      const pass = parseFloat(passText) || 0;
+      const neet = parseFloat(neetText) || 0;
+      const jee = parseFloat(jeeText) || 0;
+      
+      totalPass += pass;
+      totalNeet += neet;
+      totalJee += jee;
+      count++;
+    });
+    
+    if (count > 0) {
+      const avgPass = (totalPass / count).toFixed(1);
+      const avgNeet = (totalNeet / count).toFixed(1);
+      const avgJee = (totalJee / count).toFixed(1);
+      
+      document.getElementById('avgPassCard').textContent = avgPass + '%';
+      document.getElementById('avgNeetCard').textContent = avgNeet + '%';
+      document.getElementById('avgJeeCard').textContent = avgJee + '%';
+      
+      document.getElementById('avgPassBar').style.width = avgPass + '%';
+      document.getElementById('avgNeetBar').style.width = avgNeet + '%';
+      document.getElementById('avgJeeBar').style.width = avgJee + '%';
+    }
+  }
+
+  function onSearchChange() {
+    currentPage = 1;
+    renderTable();
+  }
+
+  function clearSearchFilters() {
+    document.getElementById('searchInput').value = '';
+    currentPage = 1;
+    renderTable();
+  }
+
+  function sortTable(columnIndex) {
+    if (sortColumnIndex === columnIndex) {
+      sortDirection = !sortDirection;
+    } else {
+      sortColumnIndex = columnIndex;
+      sortDirection = true;
+    }
+    
+    const headers = document.querySelectorAll('thead th');
+    headers.forEach((th, idx) => {
+      const icon = th.querySelector('.sort-icon');
+      if (icon) {
+        if (idx === columnIndex) {
+          icon.className = sortDirection ? 'fas fa-sort-up sort-icon' : 'fas fa-sort-down sort-icon';
+          icon.style.opacity = '1';
+        } else {
+          icon.className = 'fas fa-sort sort-icon';
+          icon.style.opacity = '0.5';
+        }
+      }
+    });
+
+    tableRows.sort((a, b) => {
+      let aVal = a.cells[columnIndex].textContent.trim();
+      let bVal = b.cells[columnIndex].textContent.trim();
+
+      // Number comparison for ID, Percentages, and Cutoff
+      if (columnIndex === 0) {
+        return (parseInt(aVal) - parseInt(bVal)) * (sortDirection ? 1 : -1);
+      }
+      if (columnIndex >= 2 && columnIndex <= 4) {
+        aVal = parseFloat(aVal.replace('%', '')) || 0;
+        bVal = parseFloat(bVal.replace('%', '')) || 0;
+        return (aVal - bVal) * (sortDirection ? 1 : -1);
+      }
+      if (columnIndex === 5) {
+        aVal = aVal === 'N/A' ? 0 : parseFloat(aVal) || 0;
+        bVal = bVal === 'N/A' ? 0 : parseFloat(bVal) || 0;
+        return (aVal - bVal) * (sortDirection ? 1 : -1);
+      }
+
+      return aVal.localeCompare(bVal) * (sortDirection ? 1 : -1);
+    });
+
+    renderTable();
+  }
+
+  function renderTable() {
+    const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
+    const tbody = document.querySelector('tbody');
+
+    const filteredRows = tableRows.filter(row => {
+      const id = row.cells[0].textContent.toLowerCase();
+      const collegeName = row.cells[1].textContent.toLowerCase();
+      const pass = row.cells[2].textContent.toLowerCase();
+      const neet = row.cells[3].textContent.toLowerCase();
+      const jee = row.cells[4].textContent.toLowerCase();
+      const ssc = row.cells[5].textContent.toLowerCase();
+
+      return id.includes(searchVal) || collegeName.includes(searchVal) || pass.includes(searchVal) || neet.includes(searchVal) || jee.includes(searchVal) || ssc.includes(searchVal);
+    });
+
+    tableRows.forEach(row => row.style.display = 'none');
+    
+    const totalItems = filteredRows.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const startIdx = (currentPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, totalItems);
+
+    for (let i = startIdx; i < endIdx; i++) {
+      filteredRows[i].style.display = '';
+    }
+
+    let emptyRow = document.getElementById('noMatchingRow');
+    if (totalItems === 0) {
+      if (!emptyRow) {
+        emptyRow = document.createElement('tr');
+        emptyRow.id = 'noMatchingRow';
+        emptyRow.innerHTML = '<td colspan="7" class="text-center text-muted py-4">No matching records found</td>';
+        tbody.appendChild(emptyRow);
+      } else {
+        emptyRow.style.display = '';
+      }
+    } else {
+      if (emptyRow) emptyRow.style.display = 'none';
+    }
+
+    const showingStart = totalItems === 0 ? 0 : startIdx + 1;
+    document.getElementById('paginationInfo').textContent = `Showing ${showingStart} to ${endIdx} of ${totalItems} metrics`;
+
+    const controls = document.getElementById('paginationControls');
+    controls.innerHTML = '';
+
+    controls.innerHTML += `
+      <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;"><i class="fas fa-chevron-left"></i></a>
+      </li>
+    `;
+
+    for (let p = 1; p <= totalPages; p++) {
+      controls.innerHTML += `
+        <li class="page-item ${currentPage === p ? 'active' : ''}">
+          <a class="page-link" href="#" onclick="changePage(${p}); return false;">${p}</a>
+        </li>
+      `;
+    }
+
+    controls.innerHTML += `
+      <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;"><i class="fas fa-chevron-right"></i></a>
+      </li>
+    `;
+  }
+
+  function changePage(page) {
+    currentPage = page;
+    renderTable();
+  }
+</script>
+</body>
+</html>

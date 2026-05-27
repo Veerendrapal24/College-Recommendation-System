@@ -1,5 +1,6 @@
 package com.clg.recommender.CollegeRecommender.controllers;
 
+import com.clg.recommender.CollegeRecommender.dto.CollegeDto;
 import com.clg.recommender.CollegeRecommender.model.Branch;
 import com.clg.recommender.CollegeRecommender.model.Colloge;
 import com.clg.recommender.CollegeRecommender.services.CollegeService;
@@ -29,11 +30,12 @@ public class CollegeController {
             @RequestParam(required = false) String branch,
             Model model) {
 
-        List<Colloge> colleges = collegeService.getFilteredPrivateColleges(
+        List<CollegeDto> colleges = collegeService.getFilteredPrivateColleges(
                 location, budget, hostelAvailable, branch
         );
 
         List<Branch.Stream> availableStreams = collegeService.getAvailableStreams();
+        List<String> locations = collegeService.getUniqueLocations();
 
         model.addAttribute("colleges", colleges);
         model.addAttribute("location", location);
@@ -41,6 +43,7 @@ public class CollegeController {
         model.addAttribute("hostelAvailable", hostelAvailable);
         model.addAttribute("branch", branch);
         model.addAttribute("availableStreams", availableStreams);
+        model.addAttribute("locations", locations);
 
         return "privateColleges";
     }
@@ -53,11 +56,12 @@ public class CollegeController {
             @RequestParam(required = false) String branch,
             Model model) {
 
-        List<Colloge> colleges = collegeService.getFilteredGovernmentColleges(
+        List<CollegeDto> colleges = collegeService.getFilteredGovernmentColleges(
                 location, hostelAvailable, sscPercentage, branch
         );
 
         List<Branch.Stream> availableStreams = collegeService.getAvailableStreams();
+        List<String> locations = collegeService.getUniqueLocations();
 
         model.addAttribute("colleges", colleges);
         model.addAttribute("location", location);
@@ -65,7 +69,19 @@ public class CollegeController {
         model.addAttribute("sscPercentage", sscPercentage);
         model.addAttribute("branch", branch);
         model.addAttribute("availableStreams", availableStreams);
+        model.addAttribute("locations", locations);
 
         return "government";
+    }
+
+    @GetMapping("/api/locations")
+    @org.springframework.web.bind.annotation.ResponseBody
+    public CollegeService.LocationResult getFilteredLocations(
+            @RequestParam String sector,
+            @RequestParam String stream,
+            @RequestParam(required = false) Double budget,
+            @RequestParam(required = false) Double sscPercentage) {
+        
+        return collegeService.getFilteredLocations(sector, stream, budget, sscPercentage);
     }
 }

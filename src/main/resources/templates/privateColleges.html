@@ -5,176 +5,849 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Private Colleges - College Recommender</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    .header-bg {
-      background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-    }
-    .filter-card {
-      background-color: #f8f9fa;
-      border-radius: 15px;
-    }
-    .table th {
-      background: linear-gradient(45deg, #ff6b6b, #ee5a52);
-      color: white;
-    }
-    .table-hover tbody tr:hover {
-      background-color: rgba(255, 107, 107, 0.1);
-    }
-    .availability-true {
-      color: #28a745;
-    }
-    .availability-false {
-      color: #dc3545;
-    }
-    .branch-tag {
-      display: inline-block;
-      background-color: #e9ecef;
-      color: #495057;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      margin: 2px;
-    }
-    .sort-header {
-      cursor: pointer;
-    }
-    .sort-header:hover {
-      text-decoration: underline;
-    }
-  </style>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link th:href="@{/css/custom.css}" rel="stylesheet">
 </head>
 <body>
-<div class="container-fluid px-0">
-  <div class="header-bg text-white py-5 text-center position-relative">
-    <div class="position-absolute top-0 start-0 m-3">
-      <a href="/" class="btn btn-light rounded-pill px-4">
-        ← Back to Home
+
+<!-- Header Navbar -->
+<nav class="navbar navbar-expand-lg border-bottom py-3" style="background-color: var(--bg-secondary); border-color: var(--border) !important;">
+  <div class="container">
+    <a class="sidebar-logo" th:href="@{/}">
+      <i class="fas fa-graduation-cap text-primary"></i>
+      <h3>College Recommender</h3>
+    </a>
+    
+    <div class="ms-auto d-flex align-items-center gap-3">
+      <a th:href="@{/}" class="btn btn-secondary-custom btn-sm">
+        <i class="fas fa-arrow-left me-1"></i> Home
       </a>
+      <div class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme">
+        <i class="fas fa-moon"></i>
+      </div>
     </div>
-    <h1 class="display-5 fw-bold">🏢 Private Colleges</h1>
-    <p class="lead">Find the best private colleges matching your preferences</p>
+  </div>
+</nav>
+
+<div class="container py-5">
+  <div class="text-center mb-5">
+    <h1 class="display-5 fw-extrabold mb-2">🏢 Private Junior Colleges</h1>
+    <p class="text-secondary col-lg-6 mx-auto">Find premium private intermediate junior colleges matching your career stream, budget range, and location.</p>
   </div>
 
-  <div class="container py-5">
-    <div class="filter-card p-4 mb-5 shadow-sm">
-      <h2 class="h4 mb-4">Filter Private Colleges</h2>
-      <form th:action="@{/colleges/private/filter}" method="get">
-        <div class="row g-3">
-          <div class="col-lg-2 col-md-4">
-            <label for="location" class="form-label">Location</label>
-            <input type="text" class="form-control" id="location" name="location"
-                   th:value="${param.location}" placeholder="City or state">
-          </div>
-          <div class="col-lg-2 col-md-4">
-            <label for="budget" class="form-label">Max Budget (₹)</label>
-            <input type="number" class="form-control" id="budget" name="budget"
-                   th:value="${param.budget}" placeholder="100000" min="0" step="1000">
-          </div>
-          <div class="col-lg-2 col-md-4">
-            <label for="branch" class="form-label">Branch/Stream</label>
-            <select class="form-select" id="branch" name="branch">
-              <option value="">All Branches</option>
-              <option th:each="stream : ${availableStreams}"
-                      th:value="${stream.name()}"
-                      th:text="${stream.name()}"
-                      th:selected="${param.branch == stream.name()}">
-              </option>
-            </select>
-          </div>
-          <div class="col-lg-2 col-md-4 d-flex align-items-end">
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" id="hostelAvailable"
-                     name="hostelAvailable" value="true" th:checked="${param.hostelAvailable}">
-              <label class="form-check-label" for="hostelAvailable">Hostel Available</label>
+  <!-- Wizard Toggle (when results are showing) -->
+  <div th:if="${param.location != null || param.budget != null || param.branch != null || param.hostelAvailable != null}" class="text-center mb-4">
+    <button class="btn btn-primary-custom" onclick="toggleWizard()">
+      <i class="fas fa-sliders-h me-2"></i> Modify Search Filters
+    </button>
+  </div>
+
+  <!-- Wizard Form Section -->
+  <div class="saas-card shadow mb-5 wizard-container" id="wizardCard" 
+       th:style="${param.location != null || param.budget != null || param.branch != null || param.hostelAvailable != null} ? 'display: none;' : ''">
+    
+    <!-- Progress Indicator -->
+    <div class="wizard-progress-bar">
+      <div class="wizard-progress-bar-fill" id="wizardProgressFill"></div>
+      <div class="wizard-progress-step active" id="pStep1">1</div>
+      <div class="wizard-progress-step" id="pStep2">2</div>
+      <div class="wizard-progress-step" id="pStep3">3</div>
+    </div>
+    
+    <form th:action="@{/colleges/private/filter}" method="get" id="recommendationForm">
+      <!-- Step 1: Stream Selection -->
+      <div class="wizard-step active" id="step1">
+        <h3 class="h4 mb-3 text-center">Select Your Intermediate Stream</h3>
+        <p class="text-secondary text-center mb-4">Choose the academic track you want to pursue.</p>
+        
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-md-3">
+            <div class="stream-select-card" data-stream="MPC" onclick="selectStreamCard('MPC')">
+              <i class="fas fa-calculator"></i>
+              <h4>MPC</h4>
+              <span class="small text-secondary">Maths, Physics, Chem</span>
             </div>
           </div>
-          <div class="col-lg-2 col-md-4 d-flex align-items-end">
-            <button type="submit" class="btn btn-dark px-4 py-2 w-100">
-              🔍 Find Colleges
-            </button>
+          <div class="col-6 col-md-3">
+            <div class="stream-select-card" data-stream="BiPC" onclick="selectStreamCard('BiPC')">
+              <i class="fas fa-microscope"></i>
+              <h4>BiPC</h4>
+              <span class="small text-secondary">Bio, Physics, Chem</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stream-select-card" data-stream="CEC" onclick="selectStreamCard('CEC')">
+              <i class="fas fa-coins"></i>
+              <h4>CEC</h4>
+              <span class="small text-secondary">Civics, Econ, Commerce</span>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="stream-select-card" data-stream="MEC" onclick="selectStreamCard('MEC')">
+              <i class="fas fa-chart-line"></i>
+              <h4>MEC</h4>
+              <span class="small text-secondary">Maths, Econ, Commerce</span>
+            </div>
           </div>
         </div>
-      </form>
+        
+        <!-- Hidden select to link with existing thymeleaf input parameter -->
+        <select class="form-select d-none" id="branch" name="branch">
+          <option value="">Select Stream</option>
+          <option th:each="stream : ${availableStreams}"
+                  th:value="${stream.name()}"
+                  th:text="${stream.name()}"
+                  th:selected="${param.branch == stream.name()}">
+          </option>
+        </select>
+        
+        <div class="text-end">
+          <button type="button" class="btn btn-primary-custom px-4" onclick="nextStep(2)">
+            Next Step <i class="fas fa-arrow-right ms-1"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Budget & Hostel -->
+      <div class="wizard-step" id="step2">
+        <h3 class="h4 mb-3 text-center">Set Your Budget & Accommodation</h3>
+        <p class="text-secondary text-center mb-4">Define fee limits and hostel requirements.</p>
+        
+        <div class="mb-4">
+          <label for="budgetSlider" class="form-label d-flex justify-content-between">
+            <span>Maximum Annual Fee</span>
+            <strong class="text-primary" id="budgetDisplay">₹100,000</strong>
+          </label>
+  <input type="range" class="form-range" id="budgetSlider" min="10000" max="250000" step="5000" value="100000" oninput="updateBudgetDisplay(this.value)">
+          <input type="hidden" id="budget" name="budget" th:value="${param.budget ?: 100000}">
+          <span class="text-secondary small mt-2 d-block" id="budgetRecommendationText" style="display: none;"></span>
+        </div>
+        
+        <div class="saas-card bg-tertiary border-0 p-3 mb-4 d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-0 fs-6">Hostel Facilities</h5>
+            <span class="small text-secondary">Do you require in-campus student housing?</span>
+          </div>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" id="hostelAvailable" name="hostelAvailable" value="true" th:checked="${param.hostelAvailable}">
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary-custom" onclick="prevStep(1)">
+            <i class="fas fa-arrow-left me-1"></i> Back
+          </button>
+          <button type="button" class="btn btn-primary-custom px-4" onclick="nextStep(3)">
+            Next Step <i class="fas fa-arrow-right ms-1"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3: Location and Search -->
+      <div class="wizard-step" id="step3">
+        <h3 class="h4 mb-3 text-center">Choose Location & Search</h3>
+        <p class="text-secondary text-center mb-4">Filter by city/state to locate matching colleges.</p>
+        
+        <div class="mb-4">
+          <label for="locationSearchInput" class="form-label small fw-bold text-secondary">City or Location</label>
+          <div class="dropdown searchable-select-container" id="locationSelectContainer">
+            <input type="text" class="form-control searchable-select-input" id="locationSearchInput" 
+                   placeholder="Select available location" autocomplete="off" required>
+            <input type="hidden" id="location" name="location" th:value="${param.location}">
+            
+            <!-- Loading Spinner -->
+            <div class="position-absolute end-0 top-50 translate-middle-y me-3" id="locationLoader" style="display: none; z-index: 5;">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            </div>
+            
+            <ul class="dropdown-menu w-100 searchable-select-list shadow" id="locationList" 
+                style="max-height: 200px; overflow-y: auto; display: none; position: absolute; z-index: 1000; width: 100%;">
+              <li th:if="${#lists.isEmpty(locations)}" class="dropdown-item disabled text-center text-muted no-locations-found">No locations available</li>
+              <li th:unless="${#lists.isEmpty(locations)}" class="dropdown-item disabled text-center text-muted no-locations-found" style="display: none;">No locations available</li>
+              <li th:each="loc : ${locations}">
+                <button class="dropdown-item select-option text-wrap text-start w-100" type="button" 
+                        th:data-value="${loc}" th:text="${loc}"></button>
+              </li>
+            </ul>
+          </div>
+          <div class="text-danger mt-2 small" id="locationError" style="display: none;">
+            Please select a valid location from the list.
+          </div>
+          <div class="text-info mt-2 small fw-semibold" id="locationFallbackAlert" style="display: none;">
+            <i class="fas fa-info-circle me-1"></i> No exact matches found. Showing nearby budget options.
+          </div>
+        </div>
+        
+        <div class="d-flex justify-content-between">
+          <button type="button" class="btn btn-secondary-custom" onclick="prevStep(2)">
+            <i class="fas fa-arrow-left me-1"></i> Back
+          </button>
+          <button type="submit" class="btn btn-primary-custom px-5">
+            🔍 Find Colleges
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Results Section -->
+  <div th:if="${colleges != null}">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="h4 mb-0 fw-bold">Recommendation Results</h2>
+      <span class="badge bg-primary-light text-primary fs-6 py-2 px-3 rounded-pill" th:text="${colleges.size()} + ' colleges matched'"></span>
     </div>
 
-    <div th:if="${colleges != null}">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 mb-0">Search Results</h2>
-        <span class="badge bg-primary fs-6" th:text="${colleges.size()} + ' colleges found'"></span>
+    <!-- Skeleton Loader (Hidden by default, shown briefly via JS) -->
+    <div class="row g-4 d-none" id="skeletonLoader">
+      <div class="col-md-4" th:each="i : ${#numbers.sequence(1, 3)}">
+        <div class="saas-card p-0 overflow-hidden" style="height: 380px;">
+          <div class="skeleton" style="height: 140px;"></div>
+          <div class="p-4">
+            <div class="skeleton mb-3" style="height: 20px; width: 80%;"></div>
+            <div class="skeleton mb-4" style="height: 14px; width: 50%;"></div>
+            <div class="skeleton" style="height: 40px; width: 100%;"></div>
+          </div>
+        </div>
       </div>
+    </div>
 
-      <div th:if="${colleges.empty}" class="alert alert-info">
-        <h5>No colleges found matching your criteria.</h5>
-        <p class="mb-0">Try adjusting your filters or search for a different location/branch combination.</p>
+    <!-- Empty State -->
+    <div th:if="${colleges.empty}" class="saas-card text-center py-5" id="resultsContent">
+      <i class="bi bi-exclamation-octagon text-warning mb-4" style="font-size: 3.5rem;"></i>
+      <h3 class="h4 mb-2 fw-bold">No exact colleges found</h3>
+      <p class="text-secondary col-lg-6 mx-auto mb-4">We couldn't find colleges matching all of your strict criteria. Here are a few suggestions to help expand your search:</p>
+      <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+        <span class="badge bg-secondary-subtle text-secondary border py-2 px-3 rounded-pill"><i class="bi bi-cash me-1"></i> Increase Budget</span>
+        <span class="badge bg-secondary-subtle text-secondary border py-2 px-3 rounded-pill"><i class="bi bi-geo-alt me-1"></i> Change Location</span>
+        <span class="badge bg-secondary-subtle text-secondary border py-2 px-3 rounded-pill"><i class="bi bi-journals me-1"></i> Change Stream</span>
+        <span class="badge bg-secondary-subtle text-secondary border py-2 px-3 rounded-pill"><i class="bi bi-house me-1"></i> Disable Hostel Requirement</span>
       </div>
+      <button class="btn btn-primary-custom" onclick="toggleWizard()"><i class="bi bi-sliders me-1"></i> Modify Filters</button>
+    </div>
 
-      <div th:unless="${colleges.empty}">
-        <div class="table-responsive">
-          <table class="table table-hover table-bordered">
-            <thead>
-            <tr>
-              <th>College Name</th>
-              <th>Location</th>
-              <th>Budget</th>
-              <th>Hostel</th>
-              <th>Available Branches</th>
-              <th class="sort-header" onclick="sortTable(5)">JEE Mains %</th>
-              <th class="sort-header" onclick="sortTable(6)">NEET %</th>
-              <th class="sort-header" onclick="sortTable(7)">Pass %</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="college : ${colleges}">
-              <td th:text="${college.name}"></td>
-              <td th:text="${college.location}"></td>
-              <td th:text="${college.budgetRange != null ? '₹' + #numbers.formatCurrency(college.budgetRange) : 'N/A'}"></td>
-              <td>
-                <span th:class="${college.hostelAvailable} ? 'availability-true' : 'availability-false'"
-                      th:text="${college.hostelAvailable} ? '✓ Available' : '✗ Not Available'">
-                </span>
-              </td>
-              <td>
-                <span th:if="${college.branches != null and !college.branches.empty}">
-                  <span th:each="branch : ${college.branches}"
-                        class="branch-tag"
-                        th:text="${branch.streamName}">
-                  </span>
-                </span>
-                <span th:unless="${college.branches != null and !college.branches.empty}" class="text-muted">N/A</span>
-              </td>
-              <td th:text="${college.performanceMetric?.mainsQualPercent != null ?
-                          #numbers.formatDecimal(college.performanceMetric.mainsQualPercent, 1, 2) + '%' : 'N/A'}"></td>
-              <td th:text="${college.performanceMetric?.neetQualPercent != null ?
-                          #numbers.formatDecimal(college.performanceMetric.neetQualPercent, 1, 2) + '%' : 'N/A'}"></td>
-              <td th:text="${college.performanceMetric?.passPercentage != null ?
-                          #numbers.formatDecimal(college.performanceMetric.passPercentage, 1, 2) + '%' : 'N/A'}"></td>
-            </tr>
-            </tbody>
-          </table>
+    <!-- Real Results Cards Grid -->
+    <div th:unless="${colleges.empty}" class="result-grid" id="realResults">
+      <div th:each="collegeDto : ${colleges}" class="college-result-card" th:data-id="${collegeDto.collegeId}">
+        
+        <!-- Header -->
+        <div class="college-card-header d-flex justify-content-between align-items-center" th:style="${collegeDto.exactMatch} ? '' : 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);'">
+          <div>
+            <span th:if="${collegeDto.exactMatch}" class="badge bg-primary text-white me-2"><i class="bi bi-check-circle-fill me-1"></i>Exact Match</span>
+            <span th:unless="${collegeDto.exactMatch}" class="badge bg-warning text-dark me-2"><i class="bi bi-exclamation-triangle-fill me-1"></i>Nearby Recommendation</span>
+            <span class="badge bg-primary-light text-primary" th:text="${collegeDto.sector.name()}">Private</span>
+          </div>
+          <span class="college-card-fav fav-star" th:data-id="${collegeDto.collegeId}" onclick="toggleFavorite(this.getAttribute('data-id'), event)">
+            <i class="far fa-star"></i>
+          </span>
+        </div>
+        
+        <!-- Body -->
+        <div class="college-card-body">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h3 class="college-card-title fw-bold text-primary mb-0" th:text="${collegeDto.name}">College Name</h3>
+            <span class="badge bg-success-subtle text-success border border-success-subtle py-1 px-2 rounded" style="font-size: 0.8rem;" th:text="${#numbers.formatDecimal(collegeDto.score, 1, 0) + '% Match'}">95% Match</span>
+          </div>
+          
+          <div class="college-card-meta">
+            <span><i class="fas fa-map-marker-alt me-1 text-tertiary"></i> <span th:text="${collegeDto.location}">Hyderabad</span></span>
+            <span>
+              <i class="fas fa-hotel me-1 text-tertiary"></i> 
+              <span th:class="${collegeDto.hostelAvailable} ? 'text-success' : 'text-danger'" 
+                    th:text="${collegeDto.hostelAvailable} ? 'Hostel Yes' : 'Hostel No'">Hostel</span>
+            </span>
+          </div>
+          
+          <!-- Stream tags -->
+          <div class="college-card-branches mb-3">
+            <span th:each="branch : ${collegeDto.branches}" class="branch-tag" th:text="${branch.streamName}">MPC</span>
+            <span th:if="${collegeDto.branches == null or collegeDto.branches.empty}" class="text-muted small">No streams listed</span>
+          </div>
+
+          <!-- Match Reasons list -->
+          <div class="mb-3">
+            <div class="small fw-semibold text-secondary mb-1">Match Analysis:</div>
+            <div class="d-flex flex-wrap gap-1">
+              <span th:each="reason : ${collegeDto.matchReasons}" class="badge bg-light text-dark border small py-1 px-2 rounded-1" style="font-size: 0.75rem;">
+                <i class="bi bi-check-lg text-success me-1"></i> <span th:text="${reason}">Reason</span>
+              </span>
+            </div>
+          </div>
+          
+          <!-- Performance mini stats -->
+          <div class="college-card-stats mb-3">
+            <div>
+              <div class="card-stat-val text-primary" th:text="${collegeDto.performanceMetric?.mainsQualPercent != null ? #numbers.formatDecimal(collegeDto.performanceMetric.mainsQualPercent, 1, 1) + '%' : 'N/A'}">50%</div>
+              <div class="card-stat-lbl">JEE Mains</div>
+            </div>
+            <div>
+              <div class="card-stat-val text-warning" th:text="${collegeDto.performanceMetric?.neetQualPercent != null ? #numbers.formatDecimal(collegeDto.performanceMetric.neetQualPercent, 1, 1) + '%' : 'N/A'}">40%</div>
+              <div class="card-stat-lbl">NEET</div>
+            </div>
+            <div>
+              <div class="card-stat-val text-success" th:text="${collegeDto.performanceMetric?.passPercentage != null ? #numbers.formatDecimal(collegeDto.performanceMetric.passPercentage, 1, 1) + '%' : 'N/A'}">92%</div>
+              <div class="card-stat-lbl">Pass Rate</div>
+            </div>
+          </div>
+          
+          <div class="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
+            <div>
+              <span class="small text-secondary d-block">Annual Fee</span>
+              <strong class="text-primary fs-5" th:text="${collegeDto.budgetRange != null ? '₹' + #numbers.formatDecimal(collegeDto.budgetRange, 0, 'COMMA', 0, 'POINT') : 'N/A'}">₹100,000</strong>
+            </div>
+            
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input compare-check" th:id="${'compare-' + collegeDto.collegeId}" 
+                     th:data-id="${collegeDto.collegeId}" th:data-name="${collegeDto.name}" th:data-location="${collegeDto.location}" 
+                     th:data-budget="${collegeDto.budgetRange}" th:data-hostel="${collegeDto.hostelAvailable}"
+                     th:data-jee="${collegeDto.performanceMetric?.mainsQualPercent}" th:data-neet="${collegeDto.performanceMetric?.neetQualPercent}"
+                     th:data-pass="${collegeDto.performanceMetric?.passPercentage}" onchange="updateCompareList()">
+              <label class="form-check-label small fw-semibold text-secondary" th:for="${'compare-' + collegeDto.collegeId}">Compare</label>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<script>
-  // Simple client-side sorting function
-  function sortTable(columnIndex) {
-    const table = document.querySelector('.table');
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
+<!-- Bottom Compare Drawer -->
+<div class="compare-drawer" id="compareDrawer">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0 fw-bold"><i class="fas fa-exchange-alt me-2 text-primary"></i> Compare Colleges (<span id="compareCount">0</span> selected)</h5>
+    <button class="btn btn-sm btn-close" onclick="closeCompareDrawer()"></button>
+  </div>
+  <div class="d-flex gap-2 overflow-auto pb-2 mb-3" id="compareItemsList">
+    <!-- Items added dynamically -->
+  </div>
+  <div class="text-end">
+    <button class="btn btn-secondary-custom me-2" onclick="clearCompareSelection()">Clear All</button>
+    <button class="btn btn-primary-custom" onclick="openCompareModal()">Compare Now</button>
+  </div>
+</div>
 
-    rows.sort((a, b) => {
-      const aValue = a.cells[columnIndex].textContent.replace('%', '') || '0';
-      const bValue = b.cells[columnIndex].textContent.replace('%', '') || '0';
-      return parseFloat(bValue) - parseFloat(aValue); // Descending order
+<!-- Comparison Side-by-Side Modal -->
+<div class="modal fade" id="compareModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content glass-card border-0">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title fw-bold"><i class="fas fa-balance-scale me-2 text-primary"></i> Side-by-Side College Comparison</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 overflow-auto">
+        <table class="table table-bordered saas-table mb-0" id="comparisonTable">
+          <!-- Populated dynamically via JS -->
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script th:src="@{/js/custom.js}"></script>
+<script>
+  let wizardStep = 1;
+  const totalWizardSteps = 3;
+  let compareList = [];
+
+  // ── Stream budget suggestions ──────────────────────────────────────────────
+  const STREAM_BUDGETS = {
+    MPC:  { min: 50000,  max: 120000, def: 85000  },
+    BiPC: { min: 60000,  max: 150000, def: 105000 },
+    MEC:  { min: 30000,  max: 80000,  def: 55000  },
+    CEC:  { min: 25000,  max: 70000,  def: 45000  }
+  };
+
+  // ── AJAX location loader ───────────────────────────────────────────────────
+  let locationFetchTimer = null;
+
+  // Single shared select function — called by delegation AND keyboard
+  function selectLocation(value) {
+    const locationInput       = document.getElementById('locationSearchInput');
+    const hiddenLocationInput = document.getElementById('location');
+    const locationList        = document.getElementById('locationList');
+    const locationError       = document.getElementById('locationError');
+
+    // ── Set values ──────────────────────────────────────────────────────────
+    locationInput.value       = value;
+    hiddenLocationInput.value = value;
+    locationInput.classList.remove('is-invalid');
+    locationInput.classList.add('is-valid');
+    if (locationError) locationError.style.display = 'none';
+
+    // ── Highlight selected, clear keyboard focus ─────────────────────────
+    locationList.querySelectorAll('.select-option').forEach(opt => {
+      const isSelected = opt.getAttribute('data-value') === value;
+      opt.classList.toggle('loc-active',   isSelected);
+      opt.classList.remove('loc-kb-focus');
     });
 
-    // Remove all existing rows
-    rows.forEach(row => tbody.removeChild(row));
+    // ── Close dropdown ───────────────────────────────────────────────────
+    locationList.style.display = 'none';
+    locationInput.focus();
 
-    // Add sorted rows
-    rows.forEach(row => tbody.appendChild(row));
+    // ── Debug logs (temporary) ───────────────────────────────────────────
+    console.log("Clicked location:", value);
+    console.log("Input value:", locationInput.value);
+    console.log("Hidden value:", hiddenLocationInput.value);
+  }
+
+  function refreshLocations(stream, budget) {
+    if (!stream) return;
+    console.log('Stream:', stream);
+    console.log('Budget:', budget);
+
+    const locationList  = document.getElementById('locationList');
+    const searchInput   = document.getElementById('locationSearchInput');
+    const hiddenInput   = document.getElementById('location');
+    const loader        = document.getElementById('locationLoader');
+    const fallbackAlert = document.getElementById('locationFallbackAlert');
+    const locationError = document.getElementById('locationError');
+
+    // Show spinner, clear previous selection
+    if (loader) loader.style.display = 'block';
+    if (fallbackAlert) fallbackAlert.style.display = 'none';
+    if (locationError) locationError.style.display = 'none';
+    searchInput.value = '';
+    hiddenInput.value = '';
+    searchInput.classList.remove('is-valid', 'is-invalid');
+    locationList.style.display = 'none';
+
+    const url = `/api/locations?sector=Private&stream=${encodeURIComponent(stream)}&budget=${budget || 250000}`;
+
+    fetch(url)
+      .then(r => r.json())
+      .then(data => {
+        if (loader) loader.style.display = 'none';
+        renderLocationOptions(data.locations || [], data.fallback, data.message);
+      })
+      .catch(() => {
+        if (loader) loader.style.display = 'none';
+        renderLocationOptions([], false, '');
+      });
+  }
+
+  function renderLocationOptions(locations, isFallback, message) {
+    console.log('Locations:', locations);
+    const locationList  = document.getElementById('locationList');
+    const fallbackAlert = document.getElementById('locationFallbackAlert');
+
+    // Remove only previously-injected items (keep the static "no locations" <li>)
+    Array.from(locationList.querySelectorAll('li.dynamic-loc')).forEach(li => li.remove());
+
+    // Fallback banner
+    if (fallbackAlert) {
+      if (isFallback && message) {
+        fallbackAlert.innerHTML = `<i class="fas fa-info-circle me-1"></i> ${message}`;
+        fallbackAlert.style.display = 'block';
+      } else {
+        fallbackAlert.style.display = 'none';
+      }
+    }
+
+    const noLocEl = locationList.querySelector('.no-locations-found');
+
+    if (!locations || locations.length === 0) {
+      if (noLocEl) noLocEl.style.display = 'block';
+      return;
+    }
+    if (noLocEl) noLocEl.style.display = 'none';
+
+    // Build <li><button> pairs — NO per-button listener (delegation handles clicks)
+    locations.forEach(loc => {
+      const li  = document.createElement('li');
+      li.classList.add('dynamic-loc');
+
+      const btn = document.createElement('button');
+      btn.type  = 'button';
+      btn.className = 'dropdown-item select-option text-wrap text-start w-100';
+      btn.setAttribute('data-value', loc);
+      btn.textContent = loc;
+
+      li.appendChild(btn);
+      locationList.appendChild(li);
+    });
+  }
+
+  function scheduleLocationRefresh() {
+    clearTimeout(locationFetchTimer);
+    locationFetchTimer = setTimeout(() => {
+      const stream = document.getElementById('branch').value;
+      const budget = document.getElementById('budget').value;
+      refreshLocations(stream, budget);
+    }, 400);
+  }
+
+  // ── DOMContentLoaded — single block, all listeners attached exactly once ──
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput   = document.getElementById('locationSearchInput');
+    const hiddenInput   = document.getElementById('location');
+    const locationList  = document.getElementById('locationList');
+    const container     = document.getElementById('locationSelectContainer');
+    const form          = document.getElementById('recommendationForm');
+    const locationError = document.getElementById('locationError');
+    const budgetSlider  = document.getElementById('budgetSlider');
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function getVisibleOptions() {
+      return Array.from(locationList.querySelectorAll('.select-option'))
+                  .filter(o => o.parentElement.style.display !== 'none');
+    }
+
+    function currentValidLocations() {
+      return Array.from(locationList.querySelectorAll('.select-option'))
+                  .map(o => o.getAttribute('data-value'));
+    }
+
+    function openDropdown() {
+      filterOptions();
+      locationList.style.display = 'block';
+    }
+
+    function closeDropdown() {
+      locationList.style.display = 'none';
+      // Remove keyboard highlight
+      locationList.querySelectorAll('.select-option').forEach(o => o.classList.remove('loc-kb-focus'));
+    }
+
+    function filterOptions() {
+      const query = searchInput.value.toLowerCase().trim();
+      let hasVisible = false;
+      locationList.querySelectorAll('.select-option').forEach(opt => {
+        const show = opt.textContent.toLowerCase().includes(query);
+        opt.parentElement.style.display = show ? '' : 'none';
+        if (show) hasVisible = true;
+      });
+      const noLocEl = locationList.querySelector('.no-locations-found');
+      if (noLocEl) noLocEl.style.display = hasVisible ? 'none' : 'block';
+    }
+
+    function validateInput() {
+      const typedVal = searchInput.value.trim();
+      const matched  = currentValidLocations()
+                         .find(loc => loc.toLowerCase() === typedVal.toLowerCase());
+      if (matched) {
+        searchInput.value = matched;
+        hiddenInput.value = matched;
+        searchInput.classList.remove('is-invalid');
+        searchInput.classList.add('is-valid');
+        if (locationError) locationError.style.display = 'none';
+        return true;
+      }
+      hiddenInput.value = '';
+      if (typedVal !== '') {
+        searchInput.classList.add('is-invalid');
+        searchInput.classList.remove('is-valid');
+        if (locationError) {
+          locationError.textContent = 'Please select a valid location from the dropdown.';
+          locationError.style.display = 'block';
+        }
+      } else {
+        searchInput.classList.remove('is-invalid', 'is-valid');
+        if (locationError) locationError.style.display = 'none';
+      }
+      return false;
+    }
+
+    // ── searchInput events ────────────────────────────────────────────────
+    searchInput.addEventListener('focus', openDropdown);
+    searchInput.addEventListener('click', openDropdown);
+
+    searchInput.addEventListener('input', () => {
+      openDropdown();
+      // Clear hidden value if user manually edits text
+      const typedVal = searchInput.value.trim();
+      const matched  = currentValidLocations()
+                         .find(l => l.toLowerCase() === typedVal.toLowerCase());
+      if (matched) {
+        hiddenInput.value = matched;
+        searchInput.classList.remove('is-invalid');
+        searchInput.classList.add('is-valid');
+        if (locationError) locationError.style.display = 'none';
+      } else {
+        hiddenInput.value = '';
+        searchInput.classList.remove('is-valid');
+      }
+    });
+
+    // ── Keyboard navigation ───────────────────────────────────────────────
+    searchInput.addEventListener('keydown', function(e) {
+      const isOpen = locationList.style.display === 'block';
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!isOpen) openDropdown();
+
+        const opts    = getVisibleOptions();
+        if (!opts.length) return;
+        const focused = locationList.querySelector('.loc-kb-focus');
+        let idx = focused ? opts.indexOf(focused) : -1;
+
+        // Remove current highlight
+        opts.forEach(o => o.classList.remove('loc-kb-focus'));
+
+        if (e.key === 'ArrowDown') idx = Math.min(idx + 1, opts.length - 1);
+        else                       idx = Math.max(idx - 1, 0);
+
+        opts[idx].classList.add('loc-kb-focus');
+        opts[idx].scrollIntoView({ block: 'nearest' });
+
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const focused = locationList.querySelector('.loc-kb-focus');
+        if (isOpen && focused) {
+          selectLocation(focused.getAttribute('data-value'));
+        } else if (!isOpen) {
+          openDropdown();
+        }
+
+      } else if (e.key === 'Escape') {
+        closeDropdown();
+      }
+    });
+
+    // ── Event delegation on locationList (handles ALL option clicks) ──────
+    // Use mousedown instead of click so it fires BEFORE the input's blur
+    locationList.addEventListener('mousedown', function(e) {
+      const btn = e.target.closest('.select-option');
+      if (!btn) return;
+      e.preventDefault();  // prevent input blur before selection registers
+      selectLocation(btn.getAttribute('data-value'));
+    });
+
+    // Stop propagation so document-level click-outside doesn't interfere
+    locationList.addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+
+    // ── Click outside closes dropdown ─────────────────────────────────────
+    document.addEventListener('click', function(e) {
+      if (container && !container.contains(e.target)) {
+        closeDropdown();
+        validateInput();
+      }
+    });
+
+    // ── Form submit validation ────────────────────────────────────────────
+    form.addEventListener('submit', function(e) {
+      if (!validateInput() || !hiddenInput.value) {
+        e.preventDefault();
+        searchInput.classList.add('is-invalid');
+        if (locationError) {
+          locationError.textContent = 'Please select a location before submitting.';
+          locationError.style.display = 'block';
+        }
+        if (wizardStep !== 3) nextStep(3);
+        showToast('Please select a valid location from the dropdown.', 'danger');
+      }
+    });
+
+    // ── Budget slider fires location refresh ──────────────────────────────
+    if (budgetSlider) {
+      budgetSlider.addEventListener('change', scheduleLocationRefresh);
+    }
+
+    // ── Restore from URL params ───────────────────────────────────────────
+    const urlParams   = new URLSearchParams(window.location.search);
+    const urlBranch   = urlParams.get('branch');
+    const urlBudget   = urlParams.get('budget');
+    const urlLocation = urlParams.get('location');
+    const urlHostel   = urlParams.get('hostelAvailable');
+
+    if (urlBranch) {
+      selectStreamCard(urlBranch);
+      document.getElementById('branch').value = urlBranch;
+      showBudgetSuggestion(urlBranch);
+    }
+    if (urlBudget) {
+      document.getElementById('budgetSlider').value = urlBudget;
+      updateBudgetDisplay(urlBudget);
+    }
+    if (urlHostel === 'true') {
+      document.getElementById('hostelAvailable').checked = true;
+    }
+    if (urlLocation) {
+      // Pre-fill text; proper match validated when options load
+      searchInput.value = urlLocation;
+      hiddenInput.value = urlLocation;
+      searchInput.classList.add('is-valid');
+    }
+
+    // ── Skeleton loader ───────────────────────────────────────────────────
+    const realResults = document.getElementById('realResults');
+    if (realResults) {
+      const skeletonLoader = document.getElementById('skeletonLoader');
+      realResults.classList.add('d-none');
+      skeletonLoader.classList.remove('d-none');
+      setTimeout(() => {
+        skeletonLoader.classList.add('d-none');
+        realResults.classList.remove('d-none');
+      }, 700);
+    }
+
+    loadFavorites();
+  });
+
+  // ── Helper: show budget suggestion text ───────────────────────────────────
+  function showBudgetSuggestion(stream) {
+    const hint = document.getElementById('budgetRecommendationText');
+    if (!hint) return;
+    const s = STREAM_BUDGETS[stream];
+    if (s) {
+      hint.innerHTML = `<i class="fas fa-lightbulb me-1 text-warning"></i>
+        Recommended budget for <strong>${stream}</strong>:
+        ₹${s.min.toLocaleString()}–₹${s.max.toLocaleString()}`;
+      hint.style.display = 'block';
+    } else {
+      hint.style.display = 'none';
+    }
+  }
+
+  // ── Wizard helpers ─────────────────────────────────────────────────────────
+  function toggleWizard() {
+    const card = document.getElementById('wizardCard');
+    card.style.display = card.style.display === 'none' ? 'block' : 'none';
+  }
+
+  function selectStreamCard(stream) {
+    document.querySelectorAll('.stream-select-card').forEach(c => c.classList.remove('selected'));
+    const card = document.querySelector(`.stream-select-card[data-stream="${stream}"]`);
+    if (card) card.classList.add('selected');
+    document.getElementById('branch').value = stream;
+
+    // ① Budget suggestion
+    showBudgetSuggestion(stream);
+    const s = STREAM_BUDGETS[stream];
+    if (s) {
+      document.getElementById('budgetSlider').value = s.def;
+      updateBudgetDisplay(s.def);
+    }
+
+    // ② Pre-fetch locations for the default budget so Step 3 is ready
+    scheduleLocationRefresh();
+  }
+
+  function updateBudgetDisplay(val) {
+    document.getElementById('budgetDisplay').textContent = '₹' + parseInt(val).toLocaleString();
+    document.getElementById('budget').value = val;
+  }
+
+  function nextStep(step) {
+    // Validation guards
+    if (step === 2 && document.getElementById('branch').value === '') {
+      showToast('Please select an intermediate stream first!', 'danger');
+      return;
+    }
+    if (step === 3) {
+      // Trigger location refresh when moving to Step 3
+      const stream = document.getElementById('branch').value;
+      const budget = document.getElementById('budget').value;
+      if (stream) refreshLocations(stream, budget);
+    }
+
+    document.getElementById('pStep' + wizardStep).classList.remove('active');
+    document.getElementById('pStep' + wizardStep).classList.add('completed');
+    document.getElementById('step' + wizardStep).classList.remove('active');
+
+    wizardStep = step;
+
+    document.getElementById('pStep' + wizardStep).classList.add('active');
+    document.getElementById('step' + wizardStep).classList.add('active');
+
+    const percent = ((wizardStep - 1) / (totalWizardSteps - 1)) * 100;
+    document.getElementById('wizardProgressFill').style.width = percent + '%';
+  }
+
+  function prevStep(step) {
+    document.getElementById('pStep' + wizardStep).classList.remove('active');
+    document.getElementById('step' + wizardStep).classList.remove('active');
+
+    wizardStep = step;
+
+    document.getElementById('pStep' + wizardStep).classList.add('active');
+    document.getElementById('pStep' + wizardStep).classList.remove('completed');
+    document.getElementById('step' + wizardStep).classList.add('active');
+
+    const percent = ((wizardStep - 1) / (totalWizardSteps - 1)) * 100;
+    document.getElementById('wizardProgressFill').style.width = percent + '%';
+  }
+
+  // ── Compare System ─────────────────────────────────────────────────────────
+  function updateCompareList() {
+    compareList = [];
+    document.querySelectorAll('.compare-check:checked').forEach(check => {
+      compareList.push({
+        id:       check.getAttribute('data-id'),
+        name:     check.getAttribute('data-name'),
+        location: check.getAttribute('data-location'),
+        budget:   check.getAttribute('data-budget'),
+        hostel:   check.getAttribute('data-hostel') === 'true',
+        jee:      check.getAttribute('data-jee'),
+        neet:     check.getAttribute('data-neet'),
+        pass:     check.getAttribute('data-pass')
+      });
+    });
+
+    const drawer = document.getElementById('compareDrawer');
+    if (compareList.length > 0) {
+      drawer.classList.add('open');
+      document.getElementById('compareCount').textContent = compareList.length;
+      const itemsList = document.getElementById('compareItemsList');
+      itemsList.innerHTML = '';
+      compareList.forEach(item => {
+        itemsList.innerHTML += `
+          <div class="badge bg-primary-light text-primary d-flex align-items-center gap-2 p-2 rounded" style="white-space: nowrap;">
+            <span>${item.name}</span>
+            <i class="fas fa-times-circle cursor-pointer" onclick="removeCompareItem('${item.id}')"></i>
+          </div>`;
+      });
+    } else {
+      drawer.classList.remove('open');
+    }
+  }
+
+  function removeCompareItem(id) {
+    const check = document.getElementById('compare-' + id);
+    if (check) { check.checked = false; updateCompareList(); }
+  }
+
+  function closeCompareDrawer() {
+    document.getElementById('compareDrawer').classList.remove('open');
+  }
+
+  function clearCompareSelection() {
+    document.querySelectorAll('.compare-check').forEach(c => c.checked = false);
+    updateCompareList();
+  }
+
+  function openCompareModal() {
+    if (compareList.length < 2) {
+      showToast('Please select at least 2 colleges to compare!', 'info');
+      return;
+    }
+    const table = document.getElementById('comparisonTable');
+    let h  = '<tr><th>Attribute</th>';
+    let n  = '<tr><th>College Name</th>';
+    let l  = '<tr><th>Location</th>';
+    let b  = '<tr><th>Annual Fees</th>';
+    let ho = '<tr><th>Hostel</th>';
+    let je = '<tr><th>JEE Mains Qual</th>';
+    let ne = '<tr><th>NEET Qual</th>';
+    let pa = '<tr><th>Pass Rate</th>';
+
+    compareList.forEach((item, idx) => {
+      h  += `<th>College #${idx + 1}</th>`;
+      n  += `<td class="fw-bold">${item.name}</td>`;
+      l  += `<td>${item.location}</td>`;
+      b  += `<td class="fw-bold text-primary">₹${parseFloat(item.budget).toLocaleString()}</td>`;
+      ho += `<td>${item.hostel ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-danger">No</span>'}</td>`;
+      je += `<td>${item.jee && item.jee !== 'null' ? parseFloat(item.jee).toFixed(1) + '%' : 'N/A'}</td>`;
+      ne += `<td>${item.neet && item.neet !== 'null' ? parseFloat(item.neet).toFixed(1) + '%' : 'N/A'}</td>`;
+      pa += `<td>${item.pass && item.pass !== 'null' ? parseFloat(item.pass).toFixed(1) + '%' : 'N/A'}</td>`;
+    });
+
+    table.innerHTML = [h,n,l,b,ho,je,ne,pa].map(row => row + '</tr>').join('');
+    new bootstrap.Modal(document.getElementById('compareModal')).show();
   }
 </script>
 </body>

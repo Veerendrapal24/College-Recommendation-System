@@ -1,4 +1,4 @@
-/*package com.clg.recommender.CollegeRecommender.config;
+package com.clg.recommender.CollegeRecommender.config;
 
 import com.clg.recommender.CollegeRecommender.model.Role;
 import com.clg.recommender.CollegeRecommender.model.User;
@@ -92,4 +92,4 @@ public class AdminUserInitializer implements CommandLineRunner {
             System.out.println("Note: Some users may need manual role assignment");
         }
     }
-}*/
+}

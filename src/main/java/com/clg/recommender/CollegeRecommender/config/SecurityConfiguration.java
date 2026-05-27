@@ -49,7 +49,10 @@ public class SecurityConfiguration {
                                 "/images/**",
                                 "/webjars/**",
                                 "/favicon.ico",
-                                "/h2-console/**"
+                                "/api/locations",
+                                "/colleges/**",
+                                "/colleges/private/filter",
+                                "/colleges/government/filter"
                         ).permitAll()
 
                         .requestMatchers("/admin/**")
@@ -78,9 +81,7 @@ public class SecurityConfiguration {
                         .permitAll()
                 )
 
-                .headers(headers ->
-                        headers.frameOptions(frame -> frame.disable())
-                );
+;
 
         return http.build();
     }
